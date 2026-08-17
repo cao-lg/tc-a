@@ -1,0 +1,18 @@
+{
+  "name": "teacher-console",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "老师本地工具：生成/发放激活码、批量导入学生导出文件、核验身份与防篡改、可视化分析平时成绩。零后端、零上传。",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4178",
+    "issue": "node tools/issue-codes.mjs",
+    "verify": "node tools/verify-export.mjs"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.8"
+  }
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>老师控制台 · 平时成绩核验与分析</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="root" class="wrap">
+      <h1>🧑‍🏫 老师控制台</h1>
+      <p class="sub">平时成绩核验与可视化分析 · 本地优先 · 零后端 · 数据不上传</p>
+      <div class="tabs">
+        <button class="tab active" data-target="panel-issue">① 发放激活码</button>
+        <button class="tab" data-target="panel-import">② 导入与核验</button>
+        <button class="tab" data-target="panel-dash">③ 分析报表</button>
+      </div>
+      <section id="panel-issue" class="panel active"></section>
+      <section id="panel-import" class="panel"></section>
+      <section id="panel-dash" class="panel"></section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

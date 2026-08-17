@@ -1,0 +1,5 @@
+node_modules
+dist
+tools/teacher-keys.json
+tools/teacher-secrets.json
+*.local

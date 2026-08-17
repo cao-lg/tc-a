@@ -1,0 +1,10 @@
+{
+  "key_ops": [
+    "verify"
+  ],
+  "ext": true,
+  "alg": "Ed25519",
+  "crv": "Ed25519",
+  "x": "emENdFVH30ifajqzkWuc6ooFV6Af3UYERJRDqMIi_gY",
+  "kty": "OKP"
+}
