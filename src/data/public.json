@@ -1,8 +1,22 @@
-{
-  "key_ops": ["verify"],
-  "ext": true,
-  "alg": "Ed25519",
-  "crv": "Ed25519",
-  "x": "emENdFVH30ifajqzkWuc6ooFV6Af3UYERJRDqMIi_gY",
-  "kty": "OKP"
-}
+[
+  {
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true,
+    "alg": "Ed25519",
+    "crv": "Ed25519",
+    "x": "emENdFVH30ifajqzkWuc6ooFV6Af3UYERJRDqMIi_gY",
+    "kty": "OKP"
+  },
+  {
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true,
+    "alg": "Ed25519",
+    "crv": "Ed25519",
+    "x": "gGytN-pRrnr8DlBUsr_W9kzexeLHXLubguNpnI7tI_Y",
+    "kty": "OKP"
+  }
+]
