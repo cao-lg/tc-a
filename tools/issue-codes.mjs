@@ -8,7 +8,7 @@
 // 用法：
 //   1) 准备 tools/roster.csv：每行 "学号,姓名"（激活码自动生成）
 //   2) node tools/issue-codes.mjs
-//   3) 把生成的 src/public.json + tools/certs.json 拷到学生站 src/data/
+//   3) 把生成的 src/data/public.json + src/data/certs.json 拷到学生站 src/data/
 //
 // 幂等：已存在的私钥会被复用（不覆盖）；已签发的学号会跳过证书更新（保留原证书）。
 import { webcrypto as crypto } from 'node:crypto'
@@ -21,9 +21,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
 const KEYS = join(__dirname, 'teacher-keys.json')
 const SECRETS = join(__dirname, 'teacher-secrets.json')
-const CERTS = join(__dirname, 'certs.json')
+const DATA_DIR = join(root, 'src', 'data')
+const CERTS = join(DATA_DIR, 'certs.json')
 const ROSTER = join(__dirname, 'roster.csv')
-const PUBLIC = join(root, 'src', 'public.json')
+const PUBLIC = join(DATA_DIR, 'public.json')
 
 function randomCode() {
   const b = new Uint8Array(16)
@@ -73,13 +74,13 @@ async function main() {
     if (idx >= 0) certs[idx] = entry; else certs.push(entry)
   }
 
-  mkdirSync(join(root, 'src', 'data'), { recursive: true })
+  mkdirSync(DATA_DIR, { recursive: true })
   writeFileSync(SECRETS, JSON.stringify(Object.values(secretsMap), null, 2))
   writeFileSync(CERTS, JSON.stringify(certs, null, 2))
   writeFileSync(PUBLIC, JSON.stringify(keys.public, null, 2))
 
   console.log(`[ok] 本次新签发 ${issued} 个激活码，公开证书总数 ${certs.length}`)
-  console.log('[下一步] 把 src/public.json 和 tools/certs.json 拷到学生站 src/data/（覆盖同名文件），学生站即可激活与本地核验；')
+  console.log('[下一步] 把 src/data/public.json 和 src/data/certs.json 拷到学生站 src/data/（覆盖同名文件），学生站即可激活与本地核验；')
   console.log('        老师站核验导出文件时直接读本机 tools/teacher-secrets.json（数组格式）。')
 }
 

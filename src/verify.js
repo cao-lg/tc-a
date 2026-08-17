@@ -1,6 +1,14 @@
 // 浏览器端核验：用内置公钥验证身份归属，并用老师粘贴的「激活码库」验证防篡改。
 import { importPublicKey, verifyCert, deriveMacKey, verifyBundle } from './identity.js'
-import { publicKeyJwk } from './public.js'
+import { publicKeyJwk as fallbackJwk } from './public.js'
+
+async function loadPublicJwk() {
+  try {
+    return (await import('./data/public.json')).default
+  } catch {
+    return fallbackJwk
+  }
+}
 
 // secrets: { [sid]: code } 或 [{sid,name,code}]，由老师在本地粘贴/导入（绝不随应用分发）。
 export async function verifyFile(data, secrets) {
@@ -11,6 +19,7 @@ export async function verifyFile(data, secrets) {
   const map = Array.isArray(secrets)
     ? Object.fromEntries(secrets.map((s) => [s.sid, s.code]))
     : (secrets || {})
+  const publicKeyJwk = await loadPublicJwk()
   const pub = await importPublicKey(publicKeyJwk)
   const code = map[id.sid]
   let certOk = false

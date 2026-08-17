@@ -11,7 +11,7 @@ import { importPublicKey, verifyCert, deriveMacKey, verifyBundle } from '../src/
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SECRETS = join(__dirname, 'teacher-secrets.json')
-const PUBLIC = join(__dirname, '..', 'src', 'public.json')
+const PUBLIC = join(__dirname, '..', 'src', 'data', 'public.json')
 
 function pctScore(rec) {
   if (!rec || rec.total === 0) return null
