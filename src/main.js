@@ -1,5 +1,26 @@
 import { verifyFile } from './verify.js'
 import { profileOf, classSummary, gradeBuckets, ranking, topWrong } from './analytics.js'
+import { signCert, deriveKeyFromPassword, findTeacherKey } from './identity.js'
+import publicKeys from './data/public.json'
+
+// 方案 Y：老师用密码在浏览器派生密钥，直接发布到学生站 KV（纯网页、不落盘）。
+// 课程站生产域名（用于跨域 POST /api/issue）。如需本地联调可临时改这里。
+const SITE_ENDPOINTS = {
+  'cs-a': 'https://cs-a.pages.dev',
+  'ss-a': 'https://ss-a.pages.dev'
+}
+// 课程旧密钥（随机生成）的公钥 x，用于从 public.json 数组中排除、定位「老师密码派生密钥」。
+const OLD_KEY_X = [
+  'emENdFVH30ifajqzkWuc6ooFV6Af3UYERJRDqMIi_gY',
+  'gGytN-pRrnr8DlBUsr_W9kzexeLHXLubguNpnI7tI_Y'
+]
+
+// 浏览器内生成随机激活码（16 字节十六进制）
+function randomCode() {
+  const b = new Uint8Array(16)
+  crypto.getRandomValues(b)
+  return Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('')
+}
 
 const $ = (sel) => document.querySelector(sel)
 const el = (tag, props = {}, children = []) => {
@@ -88,6 +109,58 @@ function renderIssue() {
       if (!text) return
       localStorage.setItem('tc:roster', text)
       toast(box, '已保存名册。请在项目目录运行 node tools/issue-codes.mjs 生成证书与激活码。')
+    }
+  }))
+
+  // ---------- 网页签发并发布（方案 Y） ----------
+  box.append(el('h3', { textContent: '网页签发并发布到远程名册（方案 Y）' }))
+  box.append(el('p', { className: 'hint', textContent: '输入老师密码（任意电脑均可；密码不发送、不落盘），选择课程站，填写名册后直接发布到该站 KV。学生即时可激活，无需重部署学生站。' }))
+  box.append(el('label', { textContent: '老师密码' }))
+  const pwdInput = el('input', { type: 'password', placeholder: '老师密码（派生签名密钥）' })
+  box.append(pwdInput)
+  box.append(el('label', { textContent: '目标课程站' }))
+  const siteSel = el('select')
+  siteSel.append(el('option', { value: 'cs-a', textContent: 'cs-a · 数字化供应链运营' }))
+  siteSel.append(el('option', { value: 'ss-a', textContent: 'ss-a · 销售交易数据分析' }))
+  box.append(siteSel)
+  box.append(el('label', { textContent: '名册（每行 学号,姓名）' }))
+  const issueTa = el('textarea', { placeholder: '2024005,小明\n2024006,小红', rows: 6 })
+  box.append(issueTa)
+  box.append(el('button', {
+    className: 'btn primary', textContent: '签发并发布',
+    onclick: async () => {
+      const password = pwdInput.value
+      if (!password) { toast(box, '请输入老师密码', 'bad'); return }
+      const rows = issueTa.value.trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+        .map((l) => { const [sid, name] = l.split(',').map((s) => s.trim()); return { sid, name } })
+        .filter((r) => r.sid && r.name)
+      if (!rows.length) { toast(box, '名册为空或格式不对（应为 学号,姓名）', 'bad'); return }
+      try {
+        const priv = await deriveKeyFromPassword(password)
+        const tk = findTeacherKey(publicKeys, OLD_KEY_X)
+        if (!tk || tk.x !== priv.x) { toast(box, '密码错误，或本站尚未配置该派生公钥', 'bad'); return }
+        const site = siteSel.value
+        const endpoint = SITE_ENDPOINTS[site] + '/api/issue'
+        const certs = []
+        const newSecrets = {}
+        for (const r of rows) {
+          const code = randomCode()
+          const sig = await signCert(priv, r.sid, r.name, code)
+          certs.push({ sid: r.sid, name: r.name, code, sig })
+          newSecrets[r.sid] = { sid: r.sid, name: r.name, code }
+        }
+        const res = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(certs) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) { toast(box, '发布失败：' + (data.error || res.status), 'bad'); return }
+        // 保存激活码到本机库（供后续 HMAC 核验学生导出）
+        Object.assign(store.secrets, Object.fromEntries(Object.entries(newSecrets).map(([sid, c]) => [sid, c.code])))
+        store.session.secrets = store.secrets
+        saveSession(store.session)
+        toast(box, `已发布 ${data.added} 个到 ${site}（当前共 ${data.total} 人）`)
+        renderIssue()
+      } catch (e) {
+        toast(box, '签发出错：' + e.message, 'bad')
+      }
     }
   }))
 

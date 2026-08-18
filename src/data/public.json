@@ -18,5 +18,23 @@
     "crv": "Ed25519",
     "x": "gGytN-pRrnr8DlBUsr_W9kzexeLHXLubguNpnI7tI_Y",
     "kty": "OKP"
+  },
+  {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "Cbc7MC3U06ScKrFFh58kj0PHr--1P1piGPq-8F3mPSA",
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true
+  },
+  {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "CnxtXKXtWzl4tMC5TC7jQlBF0EDORNER8bMVpeFtw1U",
+    "key_ops": [
+      "verify"
+    ],
+    "ext": true
   }
 ]

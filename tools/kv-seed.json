@@ -1,0 +1,42 @@
+[
+  {
+    "sid": "2024001",
+    "name": "张三",
+    "sig": "8dgK2D24mFfR2VxfBp09PldF3uXA/CVw62rKeY8Zovy0MZQd9qY9+3kcbfjnoBFKo+tCiNz7Y6V4dTHKq4w2AQ=="
+  },
+  {
+    "sid": "2024002",
+    "name": "李四",
+    "sig": "2u1gIvmlj/VxqMUlECA3idywC2OnFiB61FeAraQW1NOwnYAE3iuNcU6JgKyR/08ZNV/s9b1OQpq9Et+T2IE7BQ=="
+  },
+  {
+    "sid": "2024003",
+    "name": "王五",
+    "sig": "nA2e8XUydGyU0ndyoQ+qsW6GSksd10RRNY9kzn0osq/RKv9K4Y7uDT+3ZKQWQldAxlC4cBcmnKhri68BL4UpBA=="
+  },
+  {
+    "sid": "2024004",
+    "name": "小北",
+    "sig": "sgFYUwoGXMsNuic4AMD0eezV+Kamqg5HTfR95oNEKafvlN4CruNx5hwhOtyioGTnYNFtBcAykpeF9BF0FFPjDw=="
+  },
+  {
+    "sid": "S2024001",
+    "name": "赵销售",
+    "sig": "Yob6AZFROumFlRsjnpSwk+D9m/lijjLhZrvZqm8dTIiYSbfH5QqJFa8zykrB66VP3OhoAb3e+caKiv3qXffHCw=="
+  },
+  {
+    "sid": "S2024002",
+    "name": "钱客户",
+    "sig": "aaAmn+75CFmrnYISuTUIlPuhhNZJulS1ss2ylPDLS48PRXdSS9tAyBCVNIV5hYu3SLp1WiiAFaaf/A1rGYlWAg=="
+  },
+  {
+    "sid": "S2024003",
+    "name": "孙订单",
+    "sig": "ZtEq8tpNZzJc2BftmympngfPjRyNCHFCu22dr0fo51kKfvV/9I0Ti5NKjruhCGoJJluQuWamP4QHX4euanz0Ag=="
+  },
+  {
+    "sid": "S2024004",
+    "name": "李成交",
+    "sig": "bbGLVr/OYGQpGI9SDSs/HfPZWZbXqv6REZYrKNq9jIkcNZo7/z4+NF88dtSoMK30fTlZJuAAFnoymftsau7NBA=="
+  }
+]

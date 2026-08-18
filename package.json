@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview --port 4178",
     "issue": "node tools/issue-codes.mjs",
-    "verify": "node tools/verify-export.mjs"
+    "verify": "node tools/verify-export.mjs",
+    "bootstrap": "node tools/bootstrap.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
