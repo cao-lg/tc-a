@@ -9,6 +9,8 @@ const SITE_ENDPOINTS = {
   'cs-a': 'https://cs-a.pages.dev',
   'ss-a': 'https://ss-a.pages.dev'
 }
+// 上次「一键发全站」未全量成功的批次（同一批证书补推到失败站点，避免重签发产生新码导致两站不一致）
+let pendingSync = null
 // 方案 Y：老师密码派生密钥只要在 public.json 信任数组内即为有效（顺序/多余钥匙无关），见下方校验。
 
 // 浏览器内生成随机激活码（16 字节十六进制）
@@ -110,15 +112,10 @@ function renderIssue() {
 
   // ---------- 网页签发并发布（方案 Y） ----------
   box.append(el('h3', { textContent: '网页签发并发布到远程名册（方案 Y）' }))
-  box.append(el('p', { className: 'hint', textContent: '输入老师密码（任意电脑均可；密码不发送、不落盘），选择课程站，填写名册后直接发布到该站 KV。学生即时可激活，无需重部署学生站。' }))
+  box.append(el('p', { className: 'hint', textContent: '输入老师密码（任意电脑均可；密码不发送、不落盘），一键发布到全部课程站（cs-a 与 ss-a）。同一激活码所有平台通用，学生无需按站点区分。' }))
   box.append(el('label', { textContent: '老师密码' }))
   const pwdInput = el('input', { type: 'password', placeholder: '老师密码（派生签名密钥）' })
   box.append(pwdInput)
-  box.append(el('label', { textContent: '目标课程站' }))
-  const siteSel = el('select')
-  siteSel.append(el('option', { value: 'cs-a', textContent: 'cs-a · 数字化供应链运营' }))
-  siteSel.append(el('option', { value: 'ss-a', textContent: 'ss-a · 销售交易数据分析' }))
-  box.append(siteSel)
   box.append(el('label', { textContent: '名册（每行 学号,姓名）' }))
   const issueTa = el('textarea', { placeholder: '2024005,小明\n2024006,小红', rows: 6 })
   box.append(issueTa)
@@ -135,8 +132,6 @@ function renderIssue() {
         const priv = await deriveKeyFromPassword(password)
         const arr = asKeyArray(publicKeys)
         if (!arr.some((k) => k && k.x === priv.x)) { toast(box, '密码错误，或本站尚未配置该派生公钥', 'bad'); return }
-        const site = siteSel.value
-        const endpoint = SITE_ENDPOINTS[site] + '/api/issue'
         const certs = []
         const newSecrets = {}
         for (const r of rows) {
@@ -145,20 +140,67 @@ function renderIssue() {
           certs.push({ sid: r.sid, name: r.name, code, sig })
           newSecrets[r.sid] = { sid: r.sid, name: r.name, code }
         }
-        const res = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(certs) })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok || !data.ok) { toast(box, '发布失败：' + (data.error || res.status), 'bad'); return }
-        // 保存激活码到本机库（供后续 HMAC 核验学生导出）
+        // 一键发全站：同一批证书推送到全部站点（证书与名册结构不区分站点，任何一站都能验证）
+        const results = await Promise.allSettled(
+          Object.entries(SITE_ENDPOINTS).map(async ([name, origin]) => {
+            try {
+              const res = await fetch(origin + '/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(certs) })
+              const data = await res.json().catch(() => ({}))
+              return { name, ok: res.ok && !!data.ok, error: data.error || res.status, added: data.added || 0 }
+            } catch (e) {
+              return { name, ok: false, error: e.message }
+            }
+          })
+        )
+        const failed = results.filter((r) => r.status !== 'fulfilled' || !r.value.ok)
+        // 保存激活码到本机库（供后续 HMAC 核验学生导出；即使部分失败也保存——这些码已在成功站点生效）
         Object.assign(store.secrets, Object.fromEntries(Object.entries(newSecrets).map(([sid, c]) => [sid, c.code])))
         store.session.secrets = store.secrets
         saveSession(store.session)
-        toast(box, `已发布 ${data.added} 个到 ${site}（当前共 ${data.total} 人）`)
+        if (!failed.length) {
+          pendingSync = null
+          toast(box, `已发布 ${certs.length} 人到全部站点（cs-a、ss-a）`)
+        } else {
+          pendingSync = { certs, siteNames: failed.map((r) => r.value?.name || '?') }
+          toast(box, `发布不完整：${pendingSync.siteNames.join('、')} 未成功（${failed.map((r) => r.value?.error).join('; ')}）。激活码已保存，可用下方「重试同步」补推同一批码，勿重复签发。`, 'bad')
+        }
         renderIssue()
       } catch (e) {
         toast(box, '签发出错：' + e.message, 'bad')
       }
     }
   }))
+
+  // 重试上次未全量同步的批次（同一批证书/激活码补推到失败站点，避免重签发产生新码造成两站不一致）
+  if (pendingSync && pendingSync.certs) {
+    box.append(el('button', {
+      className: 'btn', textContent: `⚠ 重试同步：${pendingSync.siteNames.join('、')}（补推上次 ${pendingSync.certs.length} 人）`,
+      onclick: async () => {
+        const { certs } = pendingSync
+        const results = await Promise.allSettled(
+          pendingSync.siteNames.map(async (name) => {
+            const origin = SITE_ENDPOINTS[name]
+            try {
+              const res = await fetch(origin + '/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(certs) })
+              const data = await res.json().catch(() => ({}))
+              return { name, ok: res.ok && !!data.ok, error: data.error || res.status }
+            } catch (e) {
+              return { name, ok: false, error: e.message }
+            }
+          })
+        )
+        const stillFailed = results.filter((r) => r.status !== 'fulfilled' || !r.value.ok)
+        if (!stillFailed.length) {
+          pendingSync = null
+          toast(box, `重试成功：全部站点已同步 ${certs.length} 人`)
+        } else {
+          pendingSync = { certs, siteNames: stillFailed.map((r) => r.value?.name || '?') }
+          toast(box, `仍失败：${stillFailed.map((r) => r.value?.error).join('; ')}`, 'bad')
+        }
+        renderIssue()
+      }
+    }))
+  }
 
   // 激活码库
   box.append(el('h3', { textContent: '本机激活码库' }))
