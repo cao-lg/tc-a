@@ -104,28 +104,24 @@ export async function deriveKeyFromPassword(password) {
     { name: 'PBKDF2', salt: enc.encode(KDF_SALT), iterations: KDF_ITER, hash: 'SHA-256' },
     base, 256
   )
-  // 浏览器 / Cloudflare Worker (V8)：raw 导入 Ed25519 私钥种子会自动补算公钥 x。
-  try {
-    const privKey = await subtle().importKey('raw', bits, { name: 'Ed25519' }, true, ['sign'])
-    return subtle().exportKey('jwk', privKey)
-  } catch {
-    // Node webcrypto 不支持 raw Ed25519 私钥导入：改用 node:crypto 构造 PKCS8 取公钥 x。
-    return deriveNodeEd25519(bits)
-  }
+  // 浏览器与 Node 的 Web Crypto 都【不支持】用 'raw' 直接导入 Ed25519 私钥种子，
+  // 但都支持 PKCS8 导入。构造 RFC 8410 的 PKCS8 私钥（48 字节，仅含 32 字节种子，
+  // 公钥由 Web Crypto 自行补算），导入后导出含 d 与 x 的 JWK。
+  // 全程纯 Web Crypto，不依赖 node:crypto —— node: 协议在浏览器中无法加载，正是之前报错的根因。
+  const der = buildEd25519Pkcs8(new Uint8Array(bits))
+  const privKey = await subtle().importKey('pkcs8', der, { name: 'Ed25519' }, true, ['sign'])
+  return subtle().exportKey('jwk', privKey)
 }
 
-// 仅 Node 路径：用 32 字节种子构造 PKCS8 私钥，导出含 d 与 x 的 JWK。
-// 此分支只在 Node 执行；@vite-ignore 让打包器忽略该动态导入，避免浏览器构建报错。
-async function deriveNodeEd25519(seedBuf) {
-  const spec = 'node:crypto'
-  const nodeCrypto = await import(/* @vite-ignore */ spec)
-  const seed = new Uint8Array(seedBuf)
+// 构造 RFC 8410 的 PKCS8 编码 Ed25519 私钥：
+//   SEQUENCE(30 2e) INTEGER 0(02 01 00) AlgorithmIdentifier(30 05 06 03 2b 65 70)
+//   OCTET STRING(04 22 04 20 <32 字节种子>)
+// Web Crypto 导入时会自行由种子补算公钥，无需我们做曲线运算。
+function buildEd25519Pkcs8(seedBytes) {
   const der = new Uint8Array(48)
-  // PKCS8 Ed25519: SEQ(30 2e) INT0(02 01 00) AlgId(30 05 06 03 2b 65 70) OCT(04 22 04 20 <seed>)
   der.set([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20], 0)
-  der.set(seed, 16)
-  const priv = nodeCrypto.createPrivateKey({ key: der, format: 'der', type: 'pkcs8' })
-  return priv.export({ format: 'jwk' })
+  der.set(seedBytes, 16)
+  return der
 }
 
 // 由私钥 JWK 提取纯公钥 JWK（写入 public.json / 环境变量用，不含 d）。
