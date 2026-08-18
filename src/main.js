@@ -1,6 +1,6 @@
 import { verifyFile } from './verify.js'
 import { profileOf, classSummary, gradeBuckets, ranking, topWrong } from './analytics.js'
-import { signCert, deriveKeyFromPassword, findTeacherKey } from './identity.js'
+import { signCert, deriveKeyFromPassword, asKeyArray } from './identity.js'
 import publicKeys from './data/public.json'
 
 // 方案 Y：老师用密码在浏览器派生密钥，直接发布到学生站 KV（纯网页、不落盘）。
@@ -9,11 +9,7 @@ const SITE_ENDPOINTS = {
   'cs-a': 'https://cs-a.pages.dev',
   'ss-a': 'https://ss-a.pages.dev'
 }
-// 课程旧密钥（随机生成）的公钥 x，用于从 public.json 数组中排除、定位「老师密码派生密钥」。
-const OLD_KEY_X = [
-  'emENdFVH30ifajqzkWuc6ooFV6Af3UYERJRDqMIi_gY',
-  'gGytN-pRrnr8DlBUsr_W9kzexeLHXLubguNpnI7tI_Y'
-]
+// 方案 Y：老师密码派生密钥只要在 public.json 信任数组内即为有效（顺序/多余钥匙无关），见下方校验。
 
 // 浏览器内生成随机激活码（16 字节十六进制）
 function randomCode() {
@@ -137,8 +133,8 @@ function renderIssue() {
       if (!rows.length) { toast(box, '名册为空或格式不对（应为 学号,姓名）', 'bad'); return }
       try {
         const priv = await deriveKeyFromPassword(password)
-        const tk = findTeacherKey(publicKeys, OLD_KEY_X)
-        if (!tk || tk.x !== priv.x) { toast(box, '密码错误，或本站尚未配置该派生公钥', 'bad'); return }
+        const arr = asKeyArray(publicKeys)
+        if (!arr.some((k) => k && k.x === priv.x)) { toast(box, '密码错误，或本站尚未配置该派生公钥', 'bad'); return }
         const site = siteSel.value
         const endpoint = SITE_ENDPOINTS[site] + '/api/issue'
         const certs = []
